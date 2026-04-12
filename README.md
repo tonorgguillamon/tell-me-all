@@ -30,13 +30,13 @@ Build your personal cockpit with configurable cards. Each card is a live window 
 
 ```
 ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐
-│  🏈 Football Scout   │  │  📈 Finance Focus     │  │  📬 Inbox + Calendar │
-│                      │  │                       │  │                      │
-│  ⚠ INJURY ALERT     │  │  3 healthcare policy  │  │  2 action items due  │
-│  M. Salah – hamstr.  │  │  updates this morning │  │  before 2pm meeting  │
-│                      │  │                       │  │                      │
-│  12 updates filtered │  │  Filtered: HLTH, CVS, │  │  Linked: Q3 review   │
-│  down to 1 flag      │  │  UNH + regulation     │  │  draft + budget call │
+│    Football Scout    │  │     Finance Focus    │  │   Inbox + Calendar   │
+│                      │  │                      │  │                      │
+│  INJURY ALERT        │  | 3 healthcare policy  │  │  2 action items due  │
+│  M. Salah – hamstr.  │  │ updates this morning │  │  before 2pm meeting  │
+│                      │  │                      │  │                      │
+│  12 updates filtered │  │ Filtered: HLTH, CVS, │  │  Linked: Q3 review   │
+│  down to 1 flag      │  │ UNH + regulation     │  │  draft + budget call │
 └──────────────────────┘  └──────────────────────┘  └──────────────────────┘
 ```
 
