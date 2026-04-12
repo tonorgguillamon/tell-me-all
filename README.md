@@ -129,20 +129,7 @@ Source Update
 
 ---
 
-## Getting Started
-
-> Setup instructions coming soon. Star the repo to follow progress.
-
----
-
-## Contributing
-
-Contributions, ideas, and feedback are welcome. Open an issue to start a conversation.
-
----
-
 <div align="center">
 
-Built to reduce the noise. Designed to surface what matters.
 
 </div>
