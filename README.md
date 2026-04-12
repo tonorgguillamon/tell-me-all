@@ -59,19 +59,6 @@ Tell Me All combines event-driven updates with scheduled collection:
 - Redis-backed caching and short-lived state
 - PostgreSQL as the source of truth
 
-### High-Level Flow
-
-```text
-Sources (news/APIs/tools/email/calendar)
-  -> Ingestion (webhooks + polling agents)
-  -> Queue (AWS SQS)
-  -> Processing + Summarization Agents (LLM providers)
-  -> Rules/Flags Engine
-  -> Storage (PostgreSQL + Redis)
-  -> Dashboard Cards (HTML/JS UI)
-  -> Notifications (AWS SNS)
-```
-
 ## Tech Stack
 
 - Backend: Python 3.12+, FastAPI
@@ -135,21 +122,3 @@ When a condition is met, agents can raise a flag and send a notification. Exampl
 - "Email requiring action before next calendar event"
 
 Users get proactive insights instead of constantly checking feeds.
-
-## Product Principles
-
-- One dashboard instead of many fragmented tools
-- Actionable summaries over information overload
-- Configurable intelligence controlled by the user
-- Real-time where possible, scheduled where needed
-- Human-in-the-loop decision support, not autopilot
-
-## Current Stack
-
-- Python 3.12+
-- FastAPI
-- PostgreSQL
-- Redis
-- AWS SNS + SQS
-- HTML + JavaScript UI
-- OpenAI, Claude API, or GitHub Models
