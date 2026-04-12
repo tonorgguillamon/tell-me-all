@@ -1,124 +1,148 @@
+<div align="center">
+
 # Tell Me All
 
-An intelligent, real-time floating dashboard where users build their own view of the world.
+**Your personal mission control. One dashboard. Every source. Zero noise.**
 
-Think of it as a personal mission-control panel: cards for topics you care about, live updates from multiple sources, and AI agents that summarize noise into action.
+[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io)
+[![AWS](https://img.shields.io/badge/AWS-232F3E?style=flat-square&logo=amazon-aws&logoColor=white)](https://aws.amazon.com)
 
-## Why This Project Exists
+</div>
 
-Most information tools force users to jump between apps, tabs, newsletters, and notifications.
+---
 
-Tell Me All brings everything into one place:
+## The Problem
 
-- news and open web updates
-- APIs and external tools
-- emails and calendar context
-- AI summaries and key points
-- proactive alerts when something important happens
+Most information tools force you to jump between apps, tabs, newsletters, and notifications. You're constantly checking, never monitoring — and still missing what matters.
 
-The result is one dashboard, tailored to each person, always up to date.
+**Tell Me All changes that.**
 
-## Core Product Vision
+---
 
-Users can create a floating dashboard made of configurable cards.
+## What It Does
 
-Each card can:
+Tell Me All is an intelligent, real-time floating dashboard where you define exactly what you want to watch — and AI agents handle the rest.
 
-- monitor a topic (for example football, finance, healthcare)
-- apply keyword or semantic filters
-- pull from multiple sources (newspapers, APIs, tools)
-- show condensed AI summaries instead of raw feeds
-- raise flags and send notifications when important conditions are met
+Build your personal cockpit with configurable cards. Each card is a live window into a topic, workflow, or connected tool. Instead of raw feeds, you see **what changed**, **why it matters**, and **what needs your attention now**.
 
-### Example Use Cases
+```
+┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐
+│  🏈 Football Scout   │  │  📈 Finance Focus     │  │  📬 Inbox + Calendar │
+│                      │  │                       │  │                      │
+│  ⚠ INJURY ALERT     │  │  3 healthcare policy  │  │  2 action items due  │
+│  M. Salah – hamstr.  │  │  updates this morning │  │  before 2pm meeting  │
+│                      │  │                       │  │                      │
+│  12 updates filtered │  │  Filtered: HLTH, CVS, │  │  Linked: Q3 review   │
+│  down to 1 flag      │  │  UNH + regulation     │  │  draft + budget call │
+└──────────────────────┘  └──────────────────────┘  └──────────────────────┘
+```
 
-1. Football scout view
-	Track all football news but only highlight updates related to injuries.
+---
 
-2. Finance focus view
-	Follow financial updates, restricted to healthcare-related companies and policy changes.
+## Key Features
 
-3. Inbox + calendar intelligence
-	Collect important emails, link relevant context to calendar events, and surface action items.
+**Configurable Cards**
+Each card monitors a topic of your choice with keyword and semantic filters, pulls from multiple sources simultaneously, and delivers AI-condensed summaries instead of raw noise.
 
-## What Makes It Different
+**Multi-Source Ingestion**
+Bring in news and open web updates, external APIs, emails, calendar context, and any connected tool — all in one place.
 
-- User-defined dashboard, not a fixed feed
-- Multi-source ingestion in one product
-- Agent-based summarization and prioritization
-- Real-time style updates via events or scheduled polling
-- Active monitoring with alerts, so users do not need to watch constantly
+**Agent-Based Intelligence**
+Agents continuously ingest, deduplicate, classify, and summarize updates across sources. They don't just report — they prioritize.
 
-## Architecture Overview
+**Proactive Alerts**
+Define conditions, get notified when they're met. Stop checking. Start knowing.
+
+**Deeply Personal**
+Every user controls their domains of interest, keyword rules, semantic constraints, urgency thresholds, and source trust rankings.
+
+---
+
+## Example Use Cases
+
+| Dashboard | What It Watches | What Gets Flagged |
+|---|---|---|
+| 🏈 **Football Scout** | All football news | Injury mentions for tracked players |
+| 📈 **Finance Focus** | Financial updates | Healthcare-linked companies & policy changes |
+| 📬 **Inbox Intelligence** | Email + calendar | Action items before upcoming events |
+
+---
+
+## How It Works
 
 Tell Me All combines event-driven updates with scheduled collection:
 
-- Webhooks for fast, push-based updates when available
-- Agent polling every few hours when sources do not support webhooks
-- Queue-driven processing for reliability and scale
-- Redis-backed caching and short-lived state
-- PostgreSQL as the source of truth
+- **Webhooks** — push-based updates for sources that support them
+- **Agent polling** — scheduled collection every few hours for the rest
+- **Queue-driven processing** — reliable, fault-tolerant ingestion at scale
+- **Redis caching** — fast reads and short-lived state
+- **PostgreSQL** — source of truth for all persistent data
+
+### Agent Pipeline
+
+```
+Source Update
+     │
+     ▼
+  Ingestion Layer (webhook / poll)
+     │
+     ▼
+  SQS Queue → Deduplication → Classification → Summarization
+                                                     │
+                                                     ▼
+                                              Flag Evaluation
+                                                     │
+                                          ┌──────────┴──────────┐
+                                          ▼                     ▼
+                                     Dashboard Card        SNS Notification
+```
+
+---
 
 ## Tech Stack
 
-- Backend: Python 3.12+, FastAPI
-- Database: PostgreSQL
-- Cache/Realtime support: Redis
-- Messaging: AWS SQS
-- Notifications: AWS SNS
-- Frontend: HTML + JavaScript
-- LLM Providers: OpenAI, Claude API, GitHub Models
+| Layer | Technology |
+|---|---|
+| Backend | Python 3.12+, FastAPI |
+| Database | PostgreSQL |
+| Cache & Realtime | Redis |
+| Messaging | AWS SQS |
+| Notifications | AWS SNS |
+| Frontend | HTML + JavaScript |
+| AI Providers | OpenAI, Claude API, GitHub Models |
 
-## Project Goals
+---
 
-- Build a modular card system for personalized dashboards
-- Add multi-provider AI summarization pipelines
-- Support keyword, semantic, and rule-based filtering
-- Deliver near real-time updates with fault-tolerant ingestion
-- Trigger actionable notifications through flags and thresholds
+## Project Roadmap
 
-## Application Experience
+- [x] Architecture design and documentation
+- [ ] Modular card system for personalized dashboards
+- [ ] Multi-provider AI summarization pipeline
+- [ ] Keyword, semantic, and rule-based filtering
+- [ ] Near real-time updates with fault-tolerant ingestion
+- [ ] Actionable alert and notification system
+- [ ] Email and calendar connector
+- [ ] User-defined urgency thresholds and source ranking
 
-Tell Me All is designed as a living workspace, not a static report.
+---
 
-Users shape their own cockpit with cards that can be moved, resized, grouped, and pinned by priority. A card can represent a topic, a workflow, or a connected tool. Instead of showing raw streams, cards focus on:
+## Getting Started
 
-- what changed
-- why it matters
-- what needs attention now
+> Setup instructions coming soon. Star the repo to follow progress.
 
-### Personalization Model
+---
 
-Each user can define:
+## Contributing
 
-- domains of interest (sports, finance, healthcare, policy, etc.)
-- strict keywords (for example "football players INJURED")
-- semantic constraints (for example finance only when linked to healthcare)
-- urgency thresholds and notification preferences
-- data source trust level and ranking preferences
+Contributions, ideas, and feedback are welcome. Open an issue to start a conversation.
 
-This makes the dashboard highly personal while keeping the signal quality high.
+---
 
-### Agent Behavior
+<div align="center">
 
-Agents are not only summarizers; they are continuous monitors.
+Built to reduce the noise. Designed to surface what matters.
 
-They can:
-
-- ingest updates from different connectors
-- deduplicate repeated information across sources
-- extract key points with references
-- classify items by urgency and relevance
-- trigger flags when predefined patterns are detected
-
-### Alerts and Flags
-
-A core value of the app is reducing manual monitoring time.
-
-When a condition is met, agents can raise a flag and send a notification. Examples:
-
-- "Injury mention detected for a tracked player"
-- "Healthcare regulation update impacting watched financial entities"
-- "Email requiring action before next calendar event"
-
-Users get proactive insights instead of constantly checking feeds.
+</div>
