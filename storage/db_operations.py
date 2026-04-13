@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from storage.models import Card, CardCreate, CardEvent, CardEventCreate, Dashboard, DashboardCreate, User, UserCreate
+from storage.models import Card, CardCreate, CardEvent, CardEventCreate, CardSource, Dashboard, DashboardCreate, Source, SourceCreate, User, UserCreate
 
 
 # -------------------------
@@ -53,11 +53,40 @@ async def create_event(
     payload: CardEventCreate,
 ) -> CardEvent:
     row = CardEvent(
-        card_id=payload.card_id,
+        source_id=payload.source_id,
         event_type=payload.event_type,
         summary_text=payload.summary_text,
         payload_json=payload.payload_json,
     )
+    session.add(row)
+    await session.flush()
+    await session.refresh(row)
+    return row
+
+
+async def create_source(
+    session: AsyncSession,
+    user_id: int,
+    payload: SourceCreate,
+) -> Source:
+    row = Source(
+        user_id=user_id,
+        source_type=payload.source_type,
+        name=payload.name,
+        config_json=payload.config_json,
+    )
+    session.add(row)
+    await session.flush()
+    await session.refresh(row)
+    return row
+
+
+async def attach_source_to_card(
+    session: AsyncSession,
+    card_id: int,
+    source_id: int,
+) -> CardSource:
+    row = CardSource(card_id=card_id, source_id=source_id)
     session.add(row)
     await session.flush()
     await session.refresh(row)
@@ -231,20 +260,17 @@ async def get_all_events(
 async def get_events_filtered(
     session: AsyncSession,
     *,
-    card_id: int | None = None,
+    source_id: int | None = None,
     event_type: str | None = None,
     from_occurred_at: datetime | None = None,
     to_occurred_at: datetime | None = None,
-    unassociated_only: bool = False,
     limit: int = 50,
     offset: int = 0,
 ) -> list[CardEvent]:
     stmt = select(CardEvent)
 
-    if card_id is not None:
-        stmt = stmt.where(CardEvent.card_id == card_id)
-    if unassociated_only:
-        stmt = stmt.where(CardEvent.card_id.is_(None))
+    if source_id is not None:
+        stmt = stmt.where(CardEvent.source_id == source_id)
     if event_type:
         stmt = stmt.where(CardEvent.event_type == event_type)
     if from_occurred_at is not None:
@@ -303,8 +329,84 @@ async def get_events_for_card(
 ) -> list[CardEvent]:
     stmt = (
         select(CardEvent)
-        .where(CardEvent.card_id == card_id)
+        .join(CardSource, CardSource.source_id == CardEvent.source_id)
+        .where(CardSource.card_id == card_id)
         .order_by(CardEvent.occurred_at.desc(), CardEvent.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_source_by_id(
+    session: AsyncSession,
+    source_id: int,
+) -> Source | None:
+    return await session.get(Source, source_id)
+
+
+async def get_all_sources(
+    session: AsyncSession,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[Source]:
+    stmt = select(Source).order_by(Source.id).limit(limit).offset(offset)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_sources_filtered(
+    session: AsyncSession,
+    *,
+    user_id: int | None = None,
+    source_type: str | None = None,
+    name_contains: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[Source]:
+    stmt = select(Source)
+
+    if user_id is not None:
+        stmt = stmt.where(Source.user_id == user_id)
+    if source_type:
+        stmt = stmt.where(Source.source_type == source_type)
+    if name_contains:
+        stmt = stmt.where(Source.name.ilike(f"%{name_contains}%"))
+
+    stmt = stmt.order_by(Source.id).limit(limit).offset(offset)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_sources_for_user(
+    session: AsyncSession,
+    user_id: int,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[Source]:
+    stmt = (
+        select(Source)
+        .where(Source.user_id == user_id)
+        .order_by(Source.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_sources_for_card(
+    session: AsyncSession,
+    card_id: int,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[Source]:
+    stmt = (
+        select(Source)
+        .join(CardSource, CardSource.source_id == Source.id)
+        .where(CardSource.card_id == card_id)
+        .order_by(Source.id)
         .limit(limit)
         .offset(offset)
     )

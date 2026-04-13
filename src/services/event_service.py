@@ -34,21 +34,19 @@ async def get_all_events(
 async def get_events_filtered(
     session: AsyncSession,
     *,
-    card_id: int | None = None,
+    source_id: int | None = None,
     event_type: str | None = None,
     from_occurred_at=None,
     to_occurred_at=None,
-    unassociated_only: bool = False,
     limit: int = 50,
     offset: int = 0,
 ) -> list[CardEventRead]:
     rows = await db_operations.get_events_filtered(
         session,
-        card_id=card_id,
+        source_id=source_id,
         event_type=event_type,
         from_occurred_at=from_occurred_at,
         to_occurred_at=to_occurred_at,
-        unassociated_only=unassociated_only,
         limit=limit,
         offset=offset,
     )

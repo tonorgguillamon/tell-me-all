@@ -10,14 +10,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from storage.db_engine import Base
 
 class CardEventCreate(BaseModel):
-    card_id: int | None = None
+    source_id: int
     event_type: str = Field(min_length=1, max_length=50)
     summary_text: str = Field(min_length=1, max_length=1000)
     payload_json: dict[str, Any] = Field(default_factory=dict)
 
 class CardEventRead(BaseModel):
     id: int
-    card_id: int | None
+    source_id: int
     event_type: str
     summary_text: str
     payload_json: dict[str, Any]
@@ -57,24 +57,19 @@ class CardRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class SourceIngestRequest(BaseModel):
-    card_id: int | None = None
-    source_kind: str = Field(min_length=1, max_length=30)
-    source_name: str = Field(min_length=1, max_length=120)
-    event_type: str = Field(min_length=1, max_length=50)
-    summary_text: str = Field(min_length=1, max_length=1000)
-    payload_json: dict[str, Any] = Field(default_factory=dict)
+class SourceCreate(BaseModel):
+    source_type: str = Field(min_length=1, max_length=50)
+    name: str = Field(min_length=1, max_length=120)
+    config_json: dict[str, Any] = Field(default_factory=dict)
 
 
-class SourceIngestResponse(BaseModel):
-    event_id: int
-    card_id: int | None
-    source_kind: str
-    source_name: str
-    event_type: str
-    summary_text: str
-    payload_json: dict[str, Any]
-    occurred_at: datetime
+class SourceRead(BaseModel):
+    id: int
+    user_id: int
+    source_type: str
+    name: str
+    config_json: dict[str, Any]
+    model_config = {"from_attributes": True}
 
 
 class User(Base):
@@ -82,6 +77,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     dashboards: Mapped[list["Dashboard"]] = relationship(back_populates="user")
+    sources: Mapped[list["Source"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Dashboard(Base):
@@ -100,14 +96,38 @@ class Card(Base):
     title: Mapped[str] = mapped_column(String(120))
     topic: Mapped[str] = mapped_column(String(120), index=True)
     dashboard: Mapped["Dashboard"] = relationship(back_populates="cards")
-    events: Mapped[list["CardEvent"]] = relationship(back_populates="card")
+    card_sources: Mapped[list["CardSource"]] = relationship(back_populates="card", cascade="all, delete-orphan")
+
+
+class Source(Base):
+    __tablename__ = "sources"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    source_type: Mapped[str] = mapped_column(String(50), index=True)
+    name: Mapped[str] = mapped_column(String(120), index=True)
+    config_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    user: Mapped["User"] = relationship(back_populates="sources")
+    card_sources: Mapped[list["CardSource"]] = relationship(back_populates="source", cascade="all, delete-orphan")
+    events: Mapped[list["CardEvent"]] = relationship(back_populates="source", cascade="all, delete-orphan")
+
+
+class CardSource(Base):
+    __tablename__ = "card_sources"
+
+    card_id: Mapped[int] = mapped_column(ForeignKey("cards.id"), primary_key=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("sources.id"), primary_key=True)
+
+    card: Mapped["Card"] = relationship(back_populates="card_sources")
+    source: Mapped["Source"] = relationship(back_populates="card_sources")
 
 
 class CardEvent(Base):
     __tablename__ = "card_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    card_id: Mapped[int | None] = mapped_column(ForeignKey("cards.id"), index=True, nullable=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("sources.id"), index=True)
     event_type: Mapped[str] = mapped_column(String(50), index=True)
     summary_text: Mapped[str] = mapped_column(String(1000))
     payload_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
@@ -116,4 +136,4 @@ class CardEvent(Base):
         default=lambda: datetime.now(timezone.utc),
         index=True,
     )
-    card: Mapped["Card | None"] = relationship(back_populates="events")
+    source: Mapped["Source"] = relationship(back_populates="events")

@@ -3,35 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services import card_service, event_service
 from storage.db_engine import get_session
-from storage.models import CardEventCreate, CardEventRead
+from storage.models import CardEventRead
 
 router = APIRouter(tags=["events"])
-
-
-@router.post(
-    "/cards/{card_id}/events",
-    response_model=CardEventRead,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_event_for_card(
-    card_id: int,
-    payload: CardEventCreate,
-    session: AsyncSession = Depends(get_session),
-) -> CardEventRead:
-    card = await card_service.get_card_by_id(session, card_id)
-    if card is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Card not found",
-        )
-
-    event_payload = CardEventCreate(
-        card_id=card_id,
-        event_type=payload.event_type,
-        summary_text=payload.summary_text,
-        payload_json=payload.payload_json,
-    )
-    return await event_service.create_event(session, event_payload)
 
 
 @router.get(
