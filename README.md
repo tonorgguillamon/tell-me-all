@@ -129,6 +129,53 @@ Source Update
 
 ---
 
+## Models Hierarchy
+
+```mermaid
+erDiagram
+    User {
+        int id PK
+        string email
+    }
+    Dashboard {
+        int id PK
+        int user_id FK
+        string name
+    }
+    Card {
+        int id PK
+        int dashboard_id FK
+        string title
+        string topic
+    }
+    Source {
+        int id PK
+        int user_id FK
+        string source_type
+        string name
+        json config_json
+    }
+    CardSource {
+        int card_id FK
+        int source_id FK
+    }
+    SourceEvent {
+        int id PK
+        int source_id FK
+        string event_type
+        string summary_text
+        json payload_json
+        datetime occurred_at
+    }
+
+    User ||--o{ Dashboard : "owns"
+    Dashboard ||--o{ Card : "contains"
+    User ||--o{ Source : "defines"
+    Source ||--o{ SourceEvent : "generates"
+    Card ||--o{ CardSource : "subscribes via"
+    Source ||--o{ CardSource : "linked by"
+```
+
 <div align="center">
 
 

@@ -1,23 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from src.app.dependencies import Pagination, get_pagination
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.services import card_service, event_service
+from src.services import card_service, event_service, source_service
 from storage.db_engine import get_session
-from storage.models import CardEventRead
+from storage.models import SourceEventRead, SourceEventCreate
 
 router = APIRouter(tags=["events"])
 
 
-@router.get(
-    "/cards/{card_id}/events",
-    response_model=list[CardEventRead],
-)
+@router.get("/cards/{card_id}/events", response_model=list[SourceEventRead])
 async def get_events_for_card(
     card_id: int,
-    limit: int = 50,
-    offset: int = 0,
+    pagination: Pagination = Depends(get_pagination),
     session: AsyncSession = Depends(get_session),
-) -> list[CardEventRead]:
+) -> list[SourceEventRead]:
     card = await card_service.get_card_by_id(session, card_id)
     if card is None:
         raise HTTPException(
@@ -28,35 +25,63 @@ async def get_events_for_card(
     return await event_service.get_events_for_card(
         session,
         card_id=card_id,
-        limit=limit,
-        offset=offset,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
+
+@router.get("/sources/{source_id}/events", response_model=list[SourceEventRead])
+async def get_events_for_source(
+    source_id: int,
+    pagination: Pagination = Depends(get_pagination),
+    session: AsyncSession = Depends(get_session),
+) -> list[SourceEventRead]:
+    source = await source_service.get_source_by_id(session, source_id)
+    if source is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Source not found",
+        )
+
+    return await event_service.get_events_filtered(
+        session,
+        source_id=source_id,
+        limit=pagination.limit,
+        offset=pagination.offset,
     )
 
 
-@router.get(
-    "/events",
-    response_model=list[CardEventRead],
-)
-async def get_all_events(
-    limit: int = 50,
-    offset: int = 0,
+@router.post("/sources/{source_id}/events", response_model=SourceEventRead, status_code=status.HTTP_201_CREATED)
+async def ingest_event_for_source(
+    source_id: int,
+    payload: SourceEventCreate,
     session: AsyncSession = Depends(get_session),
-) -> list[CardEventRead]:
+) -> SourceEventRead:
+    source = await source_service.get_source_by_id(session, source_id)
+    if source is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+    return await event_service.create_event(session, SourceEventCreate(
+        source_id=source_id,
+        **payload.model_dump(exclude={"source_id"}),
+    ))
+
+
+@router.get("/events", response_model=list[SourceEventRead])
+async def get_all_events(
+    pagination: Pagination = Depends(get_pagination),
+    session: AsyncSession = Depends(get_session),
+) -> list[SourceEventRead]:
     return await event_service.get_all_events(
         session,
-        limit=limit,
-        offset=offset,
+        limit=pagination.limit,
+        offset=pagination.offset,
     )
 
 
-@router.get(
-    "/events/{event_id}",
-    response_model=CardEventRead,
-)
+@router.get("/events/{event_id}", response_model=SourceEventRead)
 async def get_event(
     event_id: int,
     session: AsyncSession = Depends(get_session),
-) -> CardEventRead:
+) -> SourceEventRead:
     event = await event_service.get_event_by_id(session, event_id)
     if event is None:
         raise HTTPException(
@@ -66,10 +91,7 @@ async def get_event(
     return event
 
 
-@router.delete(
-    "/events/{event_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
+@router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_event(
     event_id: int,
     session: AsyncSession = Depends(get_session),

@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from storage import db_operations
-from storage.models import SourceCreate, SourceIngestRequest, SourceIngestResponse, SourceRead
+from storage.models import SourceCreate, SourceRead
 
 
 async def create_source(
@@ -21,6 +21,15 @@ async def get_source_by_id(
 	if row is None:
 		return None
 	return SourceRead.model_validate(row)
+
+
+async def get_all_sources(
+	session: AsyncSession,
+	limit: int = 50,
+	offset: int = 0,
+) -> list[SourceRead]:
+	rows = await db_operations.get_all_sources(session, limit=limit, offset=offset)
+	return [SourceRead.model_validate(row) for row in rows]
 
 
 async def get_sources_for_user(

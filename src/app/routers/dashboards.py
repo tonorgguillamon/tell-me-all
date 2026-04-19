@@ -8,11 +8,7 @@ from storage.models import DashboardCreate, DashboardRead
 router = APIRouter(tags=["dashboards"])
 
 
-@router.post(
-    "/users/{user_id}/dashboards",
-    response_model=DashboardRead,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("/users/{user_id}/dashboards", response_model=DashboardRead, status_code=status.HTTP_201_CREATED)
 async def create_dashboard_for_user(
     user_id: int,
     payload: DashboardCreate,

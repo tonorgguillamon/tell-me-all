@@ -46,3 +46,7 @@ async def get_users_filtered(
         offset=offset,
     )
     return [UserRead.model_validate(row) for row in rows]
+
+
+async def delete_user(session: AsyncSession, user_id: int) -> bool:
+    return await db_operations.delete_user(session, user_id)

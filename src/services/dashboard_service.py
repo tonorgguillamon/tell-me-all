@@ -63,3 +63,7 @@ async def get_dashboards_for_user(
         offset=offset,
     )
     return [DashboardRead.model_validate(row) for row in rows]
+
+
+async def delete_dashboard(session: AsyncSession, dashboard_id: int) -> bool:
+    return await db_operations.delete_dashboard(session, dashboard_id)

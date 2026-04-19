@@ -1,5 +1,6 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from src.app.dependencies import Pagination, get_pagination
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services import card_service, dashboard_service
@@ -9,11 +10,7 @@ from storage.models import CardCreate, CardRead
 router = APIRouter(tags=["cards"])
 
 
-@router.post(
-    "/dashboards/{dashboard_id}/cards",
-    response_model=CardRead,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("/dashboards/{dashboard_id}/cards", response_model=CardRead, status_code=status.HTTP_201_CREATED)
 async def create_card_for_dashboard(
     dashboard_id: int,
     payload: CardCreate,
@@ -34,8 +31,7 @@ async def create_card_for_dashboard(
 @router.get("/dashboards/{dashboard_id}/cards", response_model=list[CardRead])
 async def get_cards_for_dashboard(
     dashboard_id: int,
-    limit: int = 50,
-    offset: int = 0,
+    pagination: Pagination = Depends(get_pagination),
     session: AsyncSession = Depends(get_session),
 ) -> list[CardRead]:
     dashboard = await dashboard_service.get_dashboard_by_id(session, dashboard_id)
@@ -45,8 +41,8 @@ async def get_cards_for_dashboard(
     return await card_service.get_cards_for_dashboard(
         session,
         dashboard_id=dashboard_id,
-        limit=limit,
-        offset=offset,
+        limit=pagination.limit,
+        offset=pagination.offset,
     )
 
 

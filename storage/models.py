@@ -9,13 +9,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from storage.db_engine import Base
 
-class CardEventCreate(BaseModel):
+class SourceEventCreate(BaseModel):
     source_id: int
     event_type: str = Field(min_length=1, max_length=50)
     summary_text: str = Field(min_length=1, max_length=1000)
     payload_json: dict[str, Any] = Field(default_factory=dict)
 
-class CardEventRead(BaseModel):
+class SourceEventRead(BaseModel):
     id: int
     source_id: int
     event_type: str
@@ -110,7 +110,7 @@ class Source(Base):
 
     user: Mapped["User"] = relationship(back_populates="sources")
     card_sources: Mapped[list["CardSource"]] = relationship(back_populates="source", cascade="all, delete-orphan")
-    events: Mapped[list["CardEvent"]] = relationship(back_populates="source", cascade="all, delete-orphan")
+    events: Mapped[list["SourceEvent"]] = relationship(back_populates="source", cascade="all, delete-orphan")
 
 
 class CardSource(Base):
@@ -123,8 +123,8 @@ class CardSource(Base):
     source: Mapped["Source"] = relationship(back_populates="card_sources")
 
 
-class CardEvent(Base):
-    __tablename__ = "card_events"
+class SourceEvent(Base):
+    __tablename__ = "source_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     source_id: Mapped[int] = mapped_column(ForeignKey("sources.id"), index=True)
@@ -137,3 +137,4 @@ class CardEvent(Base):
         index=True,
     )
     source: Mapped["Source"] = relationship(back_populates="events")
+

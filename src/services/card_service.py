@@ -64,3 +64,7 @@ async def get_cards_for_dashboard(
         offset=offset,
     )
     return [CardRead.model_validate(row) for row in rows]
+
+
+async def delete_card(session: AsyncSession, card_id: int) -> bool:
+    return await db_operations.delete_card(session, card_id)

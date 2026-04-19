@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from storage.models import Card, CardCreate, CardEvent, CardEventCreate, CardSource, Dashboard, DashboardCreate, Source, SourceCreate, User, UserCreate
+from storage.models import Card, CardCreate, CardSource, Dashboard, DashboardCreate, Source, SourceCreate, SourceEvent, SourceEventCreate, User, UserCreate
 
 
 # -------------------------
@@ -50,9 +50,9 @@ async def create_card(
 
 async def create_event(
     session: AsyncSession,
-    payload: CardEventCreate,
-) -> CardEvent:
-    row = CardEvent(
+    payload: SourceEventCreate,
+) -> SourceEvent:
+    row = SourceEvent(
         source_id=payload.source_id,
         event_type=payload.event_type,
         summary_text=payload.summary_text,
@@ -238,18 +238,18 @@ async def get_cards_filtered(
 async def get_event_by_id(
     session: AsyncSession,
     event_id: int,
-) -> CardEvent | None:
-    return await session.get(CardEvent, event_id)
+) -> SourceEvent | None:
+    return await session.get(SourceEvent, event_id)
 
 
 async def get_all_events(
     session: AsyncSession,
     limit: int = 50,
     offset: int = 0,
-) -> list[CardEvent]:
+) -> list[SourceEvent]:
     stmt = (
-        select(CardEvent)
-        .order_by(CardEvent.occurred_at.desc(), CardEvent.id.desc())
+        select(SourceEvent)
+        .order_by(SourceEvent.occurred_at.desc(), SourceEvent.id.desc())
         .limit(limit)
         .offset(offset)
     )
@@ -266,19 +266,19 @@ async def get_events_filtered(
     to_occurred_at: datetime | None = None,
     limit: int = 50,
     offset: int = 0,
-) -> list[CardEvent]:
-    stmt = select(CardEvent)
+) -> list[SourceEvent]:
+    stmt = select(SourceEvent)
 
     if source_id is not None:
-        stmt = stmt.where(CardEvent.source_id == source_id)
+        stmt = stmt.where(SourceEvent.source_id == source_id)
     if event_type:
-        stmt = stmt.where(CardEvent.event_type == event_type)
+        stmt = stmt.where(SourceEvent.event_type == event_type)
     if from_occurred_at is not None:
-        stmt = stmt.where(CardEvent.occurred_at >= from_occurred_at)
+        stmt = stmt.where(SourceEvent.occurred_at >= from_occurred_at)
     if to_occurred_at is not None:
-        stmt = stmt.where(CardEvent.occurred_at <= to_occurred_at)
+        stmt = stmt.where(SourceEvent.occurred_at <= to_occurred_at)
 
-    stmt = stmt.order_by(CardEvent.occurred_at.desc(), CardEvent.id.desc()).limit(limit).offset(offset)
+    stmt = stmt.order_by(SourceEvent.occurred_at.desc(), SourceEvent.id.desc()).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -326,12 +326,12 @@ async def get_events_for_card(
     card_id: int,
     limit: int = 50,
     offset: int = 0,
-) -> list[CardEvent]:
+) -> list[SourceEvent]:
     stmt = (
-        select(CardEvent)
-        .join(CardSource, CardSource.source_id == CardEvent.source_id)
+        select(SourceEvent)
+        .join(CardSource, CardSource.source_id == SourceEvent.source_id)
         .where(CardSource.card_id == card_id)
-        .order_by(CardEvent.occurred_at.desc(), CardEvent.id.desc())
+        .order_by(SourceEvent.occurred_at.desc(), SourceEvent.id.desc())
         .limit(limit)
         .offset(offset)
     )
@@ -412,3 +412,39 @@ async def get_sources_for_card(
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def delete_user(session: AsyncSession, user_id: int) -> bool:
+    row = await session.get(User, user_id)
+    if row is None:
+        return False
+    await session.delete(row)
+    await session.flush()
+    return True
+
+
+async def delete_dashboard(session: AsyncSession, dashboard_id: int) -> bool:
+    row = await session.get(Dashboard, dashboard_id)
+    if row is None:
+        return False
+    await session.delete(row)
+    await session.flush()
+    return True
+
+
+async def delete_card(session: AsyncSession, card_id: int) -> bool:
+    row = await session.get(Card, card_id)
+    if row is None:
+        return False
+    await session.delete(row)
+    await session.flush()
+    return True
+
+
+async def delete_event(session: AsyncSession, event_id: int) -> bool:
+    row = await session.get(SourceEvent, event_id)
+    if row is None:
+        return False
+    await session.delete(row)
+    await session.flush()
+    return True
