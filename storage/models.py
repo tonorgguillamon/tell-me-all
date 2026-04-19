@@ -27,6 +27,7 @@ class SourceEventRead(BaseModel):
 
 class UserCreate(BaseModel):
     email: EmailStr
+    password: str = Field(min_length=8) # it ONLY lives in memory -> never written anywhere
 
 class UserRead(BaseModel):
     id: int
@@ -76,6 +77,7 @@ class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(255)) # bcrypt produces a ~60 character hash which is irreversible --> safe to store in DB
     dashboards: Mapped[list["Dashboard"]] = relationship(back_populates="user")
     sources: Mapped[list["Source"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 

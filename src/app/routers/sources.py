@@ -1,80 +1,71 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from src.app.dependencies import Pagination, get_pagination
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.services import card_service, source_service, user_service
+from src.app.dependencies import Pagination, get_current_user, get_pagination
+from src.services import card_service, source_service
 from storage.db_engine import get_session
-from storage.models import SourceCreate, SourceRead
+from storage.models import SourceCreate, SourceRead, UserRead
 
 router = APIRouter(tags=["sources"])
 
 
-@router.post("/users/{user_id}/sources", response_model=SourceRead, status_code=status.HTTP_201_CREATED)
-async def create_source_for_user(
-	user_id: int,
-	payload: SourceCreate,
-	session: AsyncSession = Depends(get_session),
+@router.post("/sources", response_model=SourceRead, status_code=status.HTTP_201_CREATED)
+async def create_source(
+    payload: SourceCreate,
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> SourceRead:
-	user = await user_service.get_user_by_id(session, user_id)
-	if user is None:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-	return await source_service.create_source(session, user_id, payload)
-
-
-@router.get("/users/{user_id}/sources", response_model=list[SourceRead])
-async def get_sources_for_user(
-	user_id: int,
-	pagination: Pagination = Depends(get_pagination),
-	session: AsyncSession = Depends(get_session),
-) -> list[SourceRead]:
-	user = await user_service.get_user_by_id(session, user_id)
-	if user is None:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-	return await source_service.get_sources_for_user(session, user_id, limit=pagination.limit, offset=pagination.offset)
+    return await source_service.create_source(session, current_user.id, payload)
 
 
 @router.get("/sources", response_model=list[SourceRead])
-async def get_all_sources(
-	pagination: Pagination = Depends(get_pagination),
-	session: AsyncSession = Depends(get_session),
+async def get_sources(
+    pagination: Pagination = Depends(get_pagination),
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> list[SourceRead]:
-	return await source_service.get_all_sources(session, limit=pagination.limit, offset=pagination.offset)
+    return await source_service.get_sources_for_user(
+        session, current_user.id, limit=pagination.limit, offset=pagination.offset
+    )
 
 
 @router.get("/sources/{source_id}", response_model=SourceRead)
 async def get_source(
-	source_id: int,
-	session: AsyncSession = Depends(get_session),
+    source_id: int,
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> SourceRead:
-	source = await source_service.get_source_by_id(session, source_id)
-	if source is None:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
-	return source
+    source = await source_service.get_source_by_id(session, source_id)
+    if source is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+    return source
 
 
 @router.post("/cards/{card_id}/sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def attach_source_to_card(
-	card_id: int,
-	source_id: int,
-	session: AsyncSession = Depends(get_session),
+    card_id: int,
+    source_id: int,
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> Response:
-	card = await card_service.get_card_by_id(session, card_id)
-	source = await source_service.get_source_by_id(session, source_id)
-	if card is None:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
-	if source is None:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
-	await source_service.attach_source_to_card(session, card_id, source_id)
-	return Response(status_code=status.HTTP_204_NO_CONTENT)
+    card = await card_service.get_card_by_id(session, card_id)
+    source = await source_service.get_source_by_id(session, source_id)
+    if card is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+    if source is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+    await source_service.attach_source_to_card(session, card_id, source_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/cards/{card_id}/sources", response_model=list[SourceRead])
 async def get_sources_for_card(
-	card_id: int,
-	pagination: Pagination = Depends(get_pagination),
-	session: AsyncSession = Depends(get_session),
+    card_id: int,
+    pagination: Pagination = Depends(get_pagination),
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> list[SourceRead]:
-	card = await card_service.get_card_by_id(session, card_id)
-	if card is None:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
-	return await source_service.get_sources_for_card(session, card_id, limit=pagination.limit, offset=pagination.offset)
+    card = await card_service.get_card_by_id(session, card_id)
+    if card is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+    return await source_service.get_sources_for_card(session, card_id, limit=pagination.limit, offset=pagination.offset)

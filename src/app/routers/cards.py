@@ -1,11 +1,11 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from src.app.dependencies import Pagination, get_pagination
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.app.dependencies import Pagination, get_current_user, get_pagination
 from src.services import card_service, dashboard_service
 from storage.db_engine import get_session
-from storage.models import CardCreate, CardRead
+from storage.models import CardCreate, CardRead, UserRead
 
 router = APIRouter(tags=["cards"])
 
@@ -14,6 +14,7 @@ router = APIRouter(tags=["cards"])
 async def create_card_for_dashboard(
     dashboard_id: int,
     payload: CardCreate,
+    current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> CardRead:
     dashboard = await dashboard_service.get_dashboard_by_id(session, dashboard_id)
@@ -32,6 +33,7 @@ async def create_card_for_dashboard(
 async def get_cards_for_dashboard(
     dashboard_id: int,
     pagination: Pagination = Depends(get_pagination),
+    current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[CardRead]:
     dashboard = await dashboard_service.get_dashboard_by_id(session, dashboard_id)
@@ -49,6 +51,7 @@ async def get_cards_for_dashboard(
 @router.get("/cards/{card_id}", response_model=CardRead)
 async def get_card(
     card_id: int,
+    current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> CardRead:
     card = await card_service.get_card_by_id(session, card_id)
@@ -60,6 +63,7 @@ async def get_card(
 @router.delete("/cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_card(
     card_id: int,
+    current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
     deleted = await card_service.delete_card(session, card_id)

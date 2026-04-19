@@ -6,15 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from storage.models import Card, CardCreate, CardSource, Dashboard, DashboardCreate, Source, SourceCreate, SourceEvent, SourceEventCreate, User, UserCreate
 
 
-# -------------------------
-# Write operations
-# -------------------------
-
 async def create_user(
     session: AsyncSession,
     payload: UserCreate,
+    hashed_password: str
 ) -> User:
-    row = User(email=payload.email)
+    row = User(email=payload.email, hashed_password=hashed_password)
     session.add(row)
     await session.flush()
     await session.refresh(row)
@@ -93,15 +90,19 @@ async def attach_source_to_card(
     return row
 
 
-# -------------------------
-# User queries
-# -------------------------
-
 async def get_user_by_id(
     session: AsyncSession,
     user_id: int,
 ) -> User | None:
     return await session.get(User, user_id)
+
+
+async def get_user_by_email(
+    session: AsyncSession,
+    email: str,
+) -> User | None:
+    result = await session.execute(select(User).where(User.email == email))
+    return result.scalar_one_or_none()
 
 
 async def get_all_users(

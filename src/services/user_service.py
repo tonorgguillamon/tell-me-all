@@ -3,13 +3,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from storage import db_operations
 from storage.models import UserCreate, UserRead
+from src.services.auth_utils import hash_password
 
 
 async def create_user(
     session: AsyncSession,
     payload: UserCreate,
 ) -> UserRead:
-    row = await db_operations.create_user(session, payload)
+    hashed = hash_password(payload.password)
+    row = await db_operations.create_user(session, payload, hashed_password=hashed)
     return UserRead.model_validate(row)
 
 

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from src.app.dependencies import Pagination, get_pagination
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.app.dependencies import Pagination, get_current_user, get_pagination
 from src.services import card_service, event_service, source_service
 from storage.db_engine import get_session
-from storage.models import SourceEventRead, SourceEventCreate
+from storage.models import SourceEventCreate, SourceEventRead, UserRead
 
 router = APIRouter(tags=["events"])
 
@@ -13,6 +13,7 @@ router = APIRouter(tags=["events"])
 async def get_events_for_card(
     card_id: int,
     pagination: Pagination = Depends(get_pagination),
+    current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[SourceEventRead]:
     card = await card_service.get_card_by_id(session, card_id)
@@ -33,6 +34,7 @@ async def get_events_for_card(
 async def get_events_for_source(
     source_id: int,
     pagination: Pagination = Depends(get_pagination),
+    current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[SourceEventRead]:
     source = await source_service.get_source_by_id(session, source_id)
@@ -54,6 +56,7 @@ async def get_events_for_source(
 async def ingest_event_for_source(
     source_id: int,
     payload: SourceEventCreate,
+    current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> SourceEventRead:
     source = await source_service.get_source_by_id(session, source_id)
@@ -68,6 +71,7 @@ async def ingest_event_for_source(
 @router.get("/events", response_model=list[SourceEventRead])
 async def get_all_events(
     pagination: Pagination = Depends(get_pagination),
+    current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[SourceEventRead]:
     return await event_service.get_all_events(
@@ -80,6 +84,7 @@ async def get_all_events(
 @router.get("/events/{event_id}", response_model=SourceEventRead)
 async def get_event(
     event_id: int,
+    current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> SourceEventRead:
     event = await event_service.get_event_by_id(session, event_id)
@@ -94,6 +99,7 @@ async def get_event(
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_event(
     event_id: int,
+    current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
     deleted = await event_service.delete_event(session, event_id)
