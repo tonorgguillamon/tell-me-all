@@ -7,6 +7,10 @@ from urllib.parse import quote_plus
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
+from dotenv import load_dotenv
+load_dotenv()
+
+
 def _build_database_url() -> str:
     direct_url = os.getenv("DATABASE_URL")
     if direct_url is not None and direct_url.strip() != "":

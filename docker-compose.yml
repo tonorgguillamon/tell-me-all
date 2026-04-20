@@ -37,3 +37,7 @@ services:
 volumes:
   postgres_data:
   pgadmin_data:
+
+
+# docker compose up -d
+# docker compose down
