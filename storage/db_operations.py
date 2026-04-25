@@ -1,9 +1,10 @@
+import uuid
 from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from storage.models import Card, CardCreate, CardSource, Dashboard, DashboardCreate, Source, SourceCreate, SourceEvent, SourceEventCreate, User, UserCreate
+from storage.models import Card, CardCreate, CardSource, Dashboard, DashboardCreate, Source, SourceCreate, SourceUpdate, SourceEvent, SourceEventCreate, User, UserCreate
 
 
 async def create_user(
@@ -20,7 +21,7 @@ async def create_user(
 
 async def create_dashboard(
     session: AsyncSession,
-    user_id: int,
+    user_id: uuid.UUID,
     payload: DashboardCreate,
 ) -> Dashboard:
     row = Dashboard(user_id=user_id, name=payload.name)
@@ -63,7 +64,7 @@ async def create_event(
 
 async def create_source(
     session: AsyncSession,
-    user_id: int,
+    user_id: uuid.UUID,
     payload: SourceCreate,
 ) -> Source:
     row = Source(
@@ -80,8 +81,8 @@ async def create_source(
 
 async def attach_source_to_card(
     session: AsyncSession,
-    card_id: int,
-    source_id: int,
+    card_id: uuid.UUID,
+    source_id: uuid.UUID,
 ) -> CardSource:
     row = CardSource(card_id=card_id, source_id=source_id)
     session.add(row)
@@ -92,7 +93,7 @@ async def attach_source_to_card(
 
 async def get_user_by_id(
     session: AsyncSession,
-    user_id: int,
+    user_id: uuid.UUID,
 ) -> User | None:
     return await session.get(User, user_id)
 
@@ -112,7 +113,7 @@ async def get_all_users(
 ) -> list[User]:
     stmt = (
         select(User)
-        .order_by(User.id)
+        .order_by(User.email)
         .limit(limit)
         .offset(offset)
     )
@@ -132,7 +133,7 @@ async def get_users_filtered(
     if email_contains:
         stmt = stmt.where(User.email.ilike(f"%{email_contains}%"))
 
-    stmt = stmt.order_by(User.id).limit(limit).offset(offset)
+    stmt = stmt.order_by(User.email).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -143,7 +144,7 @@ async def get_users_filtered(
 
 async def get_dashboard_by_id(
     session: AsyncSession,
-    dashboard_id: int,
+    dashboard_id: uuid.UUID,
 ) -> Dashboard | None:
     return await session.get(Dashboard, dashboard_id)
 
@@ -155,7 +156,7 @@ async def get_all_dashboards(
 ) -> list[Dashboard]:
     stmt = (
         select(Dashboard)
-        .order_by(Dashboard.id)
+        .order_by(Dashboard.name)
         .limit(limit)
         .offset(offset)
     )
@@ -166,7 +167,7 @@ async def get_all_dashboards(
 async def get_dashboards_filtered(
     session: AsyncSession,
     *,
-    user_id: int | None = None,
+    user_id: uuid.UUID | None = None,
     name_contains: str | None = None,
     limit: int = 50,
     offset: int = 0,
@@ -178,7 +179,7 @@ async def get_dashboards_filtered(
     if name_contains:
         stmt = stmt.where(Dashboard.name.ilike(f"%{name_contains}%"))
 
-    stmt = stmt.order_by(Dashboard.id).limit(limit).offset(offset)
+    stmt = stmt.order_by(Dashboard.name).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -189,7 +190,7 @@ async def get_dashboards_filtered(
 
 async def get_card_by_id(
     session: AsyncSession,
-    card_id: int,
+    card_id: uuid.UUID,
 ) -> Card | None:
     return await session.get(Card, card_id)
 
@@ -201,7 +202,7 @@ async def get_all_cards(
 ) -> list[Card]:
     stmt = (
         select(Card)
-        .order_by(Card.id)
+        .order_by(Card.title)
         .limit(limit)
         .offset(offset)
     )
@@ -212,7 +213,7 @@ async def get_all_cards(
 async def get_cards_filtered(
     session: AsyncSession,
     *,
-    dashboard_id: int | None = None,
+    dashboard_id: uuid.UUID | None = None,
     topic: str | None = None,
     title_contains: str | None = None,
     limit: int = 50,
@@ -227,7 +228,7 @@ async def get_cards_filtered(
     if title_contains:
         stmt = stmt.where(Card.title.ilike(f"%{title_contains}%"))
 
-    stmt = stmt.order_by(Card.id).limit(limit).offset(offset)
+    stmt = stmt.order_by(Card.title).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -238,7 +239,7 @@ async def get_cards_filtered(
 
 async def get_event_by_id(
     session: AsyncSession,
-    event_id: int,
+    event_id: uuid.UUID,
 ) -> SourceEvent | None:
     return await session.get(SourceEvent, event_id)
 
@@ -261,7 +262,7 @@ async def get_all_events(
 async def get_events_filtered(
     session: AsyncSession,
     *,
-    source_id: int | None = None,
+    source_id: uuid.UUID | None = None,
     event_type: str | None = None,
     from_occurred_at: datetime | None = None,
     to_occurred_at: datetime | None = None,
@@ -290,14 +291,14 @@ async def get_events_filtered(
 
 async def get_dashboards_for_user(
     session: AsyncSession,
-    user_id: int,
+    user_id: uuid.UUID,
     limit: int = 50,
     offset: int = 0,
 ) -> list[Dashboard]:
     stmt = (
         select(Dashboard)
         .where(Dashboard.user_id == user_id)
-        .order_by(Dashboard.id)
+        .order_by(Dashboard.name)
         .limit(limit)
         .offset(offset)
     )
@@ -307,14 +308,14 @@ async def get_dashboards_for_user(
 
 async def get_cards_for_dashboard(
     session: AsyncSession,
-    dashboard_id: int,
+    dashboard_id: uuid.UUID,
     limit: int = 50,
     offset: int = 0,
 ) -> list[Card]:
     stmt = (
         select(Card)
         .where(Card.dashboard_id == dashboard_id)
-        .order_by(Card.id)
+        .order_by(Card.title)
         .limit(limit)
         .offset(offset)
     )
@@ -324,7 +325,7 @@ async def get_cards_for_dashboard(
 
 async def get_events_for_card(
     session: AsyncSession,
-    card_id: int,
+    card_id: uuid.UUID,
     limit: int = 50,
     offset: int = 0,
 ) -> list[SourceEvent]:
@@ -342,7 +343,7 @@ async def get_events_for_card(
 
 async def get_source_by_id(
     session: AsyncSession,
-    source_id: int,
+    source_id: uuid.UUID,
 ) -> Source | None:
     return await session.get(Source, source_id)
 
@@ -352,7 +353,7 @@ async def get_all_sources(
     limit: int = 50,
     offset: int = 0,
 ) -> list[Source]:
-    stmt = select(Source).order_by(Source.id).limit(limit).offset(offset)
+    stmt = select(Source).order_by(Source.name).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -360,7 +361,7 @@ async def get_all_sources(
 async def get_sources_filtered(
     session: AsyncSession,
     *,
-    user_id: int | None = None,
+    user_id: uuid.UUID | None = None,
     source_type: str | None = None,
     name_contains: str | None = None,
     limit: int = 50,
@@ -375,21 +376,21 @@ async def get_sources_filtered(
     if name_contains:
         stmt = stmt.where(Source.name.ilike(f"%{name_contains}%"))
 
-    stmt = stmt.order_by(Source.id).limit(limit).offset(offset)
+    stmt = stmt.order_by(Source.name).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
 
 async def get_sources_for_user(
     session: AsyncSession,
-    user_id: int,
+    user_id: uuid.UUID,
     limit: int = 50,
     offset: int = 0,
 ) -> list[Source]:
     stmt = (
         select(Source)
         .where(Source.user_id == user_id)
-        .order_by(Source.id)
+        .order_by(Source.name)
         .limit(limit)
         .offset(offset)
     )
@@ -399,7 +400,7 @@ async def get_sources_for_user(
 
 async def get_sources_for_card(
     session: AsyncSession,
-    card_id: int,
+    card_id: uuid.UUID,
     limit: int = 50,
     offset: int = 0,
 ) -> list[Source]:
@@ -407,7 +408,7 @@ async def get_sources_for_card(
         select(Source)
         .join(CardSource, CardSource.source_id == Source.id)
         .where(CardSource.card_id == card_id)
-        .order_by(Source.id)
+        .order_by(Source.name)
         .limit(limit)
         .offset(offset)
     )
@@ -415,7 +416,35 @@ async def get_sources_for_card(
     return list(result.scalars().all())
 
 
-async def delete_user(session: AsyncSession, user_id: int) -> bool:
+async def update_source(
+    session: AsyncSession,
+    source_id: uuid.UUID,
+    payload: SourceUpdate,
+) -> Source | None:
+    row = await session.get(Source, source_id)
+    if row is None:
+        return None
+    if payload.name is not None:
+        row.name = payload.name
+    if payload.source_type is not None:
+        row.source_type = payload.source_type
+    if payload.config_json is not None:
+        row.config_json = payload.config_json
+    await session.flush()
+    await session.refresh(row)
+    return row
+
+
+async def delete_source(session: AsyncSession, source_id: uuid.UUID) -> bool:
+    row = await session.get(Source, source_id)
+    if row is None:
+        return False
+    await session.delete(row)
+    await session.flush()
+    return True
+
+
+async def delete_user(session: AsyncSession, user_id: uuid.UUID) -> bool:
     row = await session.get(User, user_id)
     if row is None:
         return False
@@ -424,7 +453,7 @@ async def delete_user(session: AsyncSession, user_id: int) -> bool:
     return True
 
 
-async def delete_dashboard(session: AsyncSession, dashboard_id: int) -> bool:
+async def delete_dashboard(session: AsyncSession, dashboard_id: uuid.UUID) -> bool:
     row = await session.get(Dashboard, dashboard_id)
     if row is None:
         return False
@@ -433,7 +462,7 @@ async def delete_dashboard(session: AsyncSession, dashboard_id: int) -> bool:
     return True
 
 
-async def delete_card(session: AsyncSession, card_id: int) -> bool:
+async def delete_card(session: AsyncSession, card_id: uuid.UUID) -> bool:
     row = await session.get(Card, card_id)
     if row is None:
         return False
@@ -442,7 +471,7 @@ async def delete_card(session: AsyncSession, card_id: int) -> bool:
     return True
 
 
-async def delete_event(session: AsyncSession, event_id: int) -> bool:
+async def delete_event(session: AsyncSession, event_id: uuid.UUID) -> bool:
     row = await session.get(SourceEvent, event_id)
     if row is None:
         return False
