@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +23,7 @@ async def get_all_users(
 
 @router.get("/{user_id}", response_model=UserRead)
 async def get_user(
-    user_id: int,
+    user_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
 ) -> UserRead:
     user = await user_service.get_user_by_id(session, user_id)
@@ -32,7 +34,7 @@ async def get_user(
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
-    user_id: int,
+    user_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
 ) -> Response:
     deleted = await user_service.delete_user(session, user_id)

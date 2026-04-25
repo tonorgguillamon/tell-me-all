@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +13,7 @@ router = APIRouter(tags=["events"])
 
 @router.get("/cards/{card_id}/events", response_model=list[SourceEventRead])
 async def get_events_for_card(
-    card_id: int,
+    card_id: uuid.UUID,
     pagination: Pagination = Depends(get_pagination),
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
@@ -32,7 +34,7 @@ async def get_events_for_card(
 
 @router.get("/sources/{source_id}/events", response_model=list[SourceEventRead])
 async def get_events_for_source(
-    source_id: int,
+    source_id: uuid.UUID,
     pagination: Pagination = Depends(get_pagination),
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
@@ -54,7 +56,7 @@ async def get_events_for_source(
 
 @router.post("/sources/{source_id}/events", response_model=SourceEventRead, status_code=status.HTTP_201_CREATED)
 async def ingest_event_for_source(
-    source_id: int,
+    source_id: uuid.UUID,
     payload: SourceEventCreate,
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
@@ -83,7 +85,7 @@ async def get_all_events(
 
 @router.get("/events/{event_id}", response_model=SourceEventRead)
 async def get_event(
-    event_id: int,
+    event_id: uuid.UUID,
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> SourceEventRead:
@@ -98,7 +100,7 @@ async def get_event(
 
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_event(
-    event_id: int,
+    event_id: uuid.UUID,
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> Response:

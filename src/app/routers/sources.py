@@ -1,10 +1,12 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.dependencies import Pagination, get_current_user, get_pagination
 from src.services import card_service, source_service
 from storage.db_engine import get_session
-from storage.models import SourceCreate, SourceRead, UserRead
+from storage.models import SourceCreate, SourceRead, SourceUpdate, UserRead
 
 router = APIRouter(tags=["sources"])
 
@@ -31,7 +33,7 @@ async def get_sources(
 
 @router.get("/sources/{source_id}", response_model=SourceRead)
 async def get_source(
-    source_id: int,
+    source_id: uuid.UUID,
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> SourceRead:
@@ -43,8 +45,8 @@ async def get_source(
 
 @router.post("/cards/{card_id}/sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def attach_source_to_card(
-    card_id: int,
-    source_id: int,
+    card_id: uuid.UUID,
+    source_id: uuid.UUID,
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
@@ -58,9 +60,34 @@ async def attach_source_to_card(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.patch("/sources/{source_id}", response_model=SourceRead)
+async def update_source(
+    source_id: uuid.UUID,
+    payload: SourceUpdate,
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SourceRead:
+    source = await source_service.update_source(session, source_id, payload)
+    if source is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+    return source
+
+
+@router.delete("/sources/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_source(
+    source_id: uuid.UUID,
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    deleted = await source_service.delete_source(session, source_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.get("/cards/{card_id}/sources", response_model=list[SourceRead])
 async def get_sources_for_card(
-    card_id: int,
+    card_id: uuid.UUID,
     pagination: Pagination = Depends(get_pagination),
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),

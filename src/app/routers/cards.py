@@ -1,3 +1,4 @@
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +13,7 @@ router = APIRouter(tags=["cards"])
 
 @router.post("/dashboards/{dashboard_id}/cards", response_model=CardRead, status_code=status.HTTP_201_CREATED)
 async def create_card_for_dashboard(
-    dashboard_id: int,
+    dashboard_id: uuid.UUID,
     payload: CardCreate,
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
@@ -31,7 +32,7 @@ async def create_card_for_dashboard(
 
 @router.get("/dashboards/{dashboard_id}/cards", response_model=list[CardRead])
 async def get_cards_for_dashboard(
-    dashboard_id: int,
+    dashboard_id: uuid.UUID,
     pagination: Pagination = Depends(get_pagination),
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
@@ -50,7 +51,7 @@ async def get_cards_for_dashboard(
 
 @router.get("/cards/{card_id}", response_model=CardRead)
 async def get_card(
-    card_id: int,
+    card_id: uuid.UUID,
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> CardRead:
@@ -62,7 +63,7 @@ async def get_card(
 
 @router.delete("/cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_card(
-    card_id: int,
+    card_id: uuid.UUID,
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> Response:

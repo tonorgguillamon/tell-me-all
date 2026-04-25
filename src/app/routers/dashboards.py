@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,7 +40,7 @@ async def get_dashboards(
 
 @router.get("/dashboards/{dashboard_id}", response_model=DashboardRead)
 async def get_dashboard(
-    dashboard_id: int,
+    dashboard_id: uuid.UUID,
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> DashboardRead:
@@ -50,7 +52,7 @@ async def get_dashboard(
 
 @router.delete("/dashboards/{dashboard_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_dashboard(
-    dashboard_id: int,
+    dashboard_id: uuid.UUID,
     current_user: UserRead = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
