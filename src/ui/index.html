@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tell Me All</title>
+  <link rel="stylesheet" href="/ui/style.css" />
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-box">
+      <h1>Tell Me All</h1>
+      <p class="subtitle">Your personal news &amp; events dashboard</p>
+
+      <div class="tabs">
+        <button class="tab active" id="tab-login" onclick="switchTab('login')">Sign in</button>
+        <button class="tab" id="tab-register" onclick="switchTab('register')">Create account</button>
+      </div>
+
+      <!-- Login form -->
+      <form id="form-login" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="you@example.com" required />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" required />
+        </div>
+        <p class="form-error" id="login-error"></p>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:0.5rem">
+          Sign in
+        </button>
+      </form>
+
+      <!-- Register form -->
+      <form id="form-register" onsubmit="handleRegister(event)" style="display:none">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="reg-email" placeholder="you@example.com" required />
+        </div>
+        <div class="form-group">
+          <label>Password <span style="color:var(--text-muted);font-size:0.75rem">(min 8 chars)</span></label>
+          <input type="password" id="reg-password" placeholder="••••••••" required minlength="8" />
+        </div>
+        <p class="form-error" id="reg-error"></p>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:0.5rem">
+          Create account
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { login, register, API } from "/ui/api.js";
+
+    // redirect if already logged in — raw fetch to avoid auto-logout loop
+    fetch(`${API}/auth/me`, { credentials: "include" })
+      .then(r => { if (r.ok) window.location.href = "/ui/dashboards.html"; });
+
+    window.switchTab = function(tab) {
+      document.getElementById("form-login").style.display    = tab === "login"    ? "" : "none";
+      document.getElementById("form-register").style.display = tab === "register" ? "" : "none";
+      document.getElementById("tab-login").classList.toggle("active",    tab === "login");
+      document.getElementById("tab-register").classList.toggle("active", tab === "register");
+    };
+
+    window.handleLogin = async function(e) {
+      e.preventDefault();
+      const err = document.getElementById("login-error");
+      err.classList.remove("visible");
+      try {
+        await login(
+          document.getElementById("login-email").value,
+          document.getElementById("login-password").value,
+        );
+        window.location.href = "/ui/dashboards.html";
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.add("visible");
+      }
+    };
+
+    window.handleRegister = async function(e) {
+      e.preventDefault();
+      const err = document.getElementById("reg-error");
+      err.classList.remove("visible");
+      try {
+        await register(
+          document.getElementById("reg-email").value,
+          document.getElementById("reg-password").value,
+        );
+        // auto-login after register
+        await login(
+          document.getElementById("reg-email").value,
+          document.getElementById("reg-password").value,
+        );
+        window.location.href = "/ui/dashboards.html";
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.add("visible");
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,9 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.app.routers.cards import router as cards_router
 from src.app.routers.dashboards import router as dashboards_router
@@ -42,6 +45,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+_UI_DIR = Path(__file__).parent.parent.parent / "src" / "ui"
+app.mount("/ui", StaticFiles(directory=_UI_DIR, html=True), name="ui")
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -70,3 +84,6 @@ app.include_router(cards_router, prefix=API_PREFIX)
 app.include_router(events_router, prefix=API_PREFIX)
 app.include_router(sources_router, prefix=API_PREFIX)
 app.include_router(auth_router)
+
+# uvicorn src.app.app:app --reload
+# http://localhost:8000/ui/index.html

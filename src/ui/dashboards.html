@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Dashboards · Tell Me All</title>
+  <link rel="stylesheet" href="/ui/style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <span class="brand">Tell Me All</span>
+    <div class="nav-actions">
+      <span id="user-email" style="font-size:0.85rem;color:var(--text-muted)"></span>
+      <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h1>My Dashboards</h1>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ New dashboard</button>
+    </div>
+
+    <div id="dashboards-grid" class="grid">
+      <div style="grid-column:1/-1;text-align:center;padding:3rem 0">
+        <span class="spinner"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create dashboard modal -->
+  <div class="modal-overlay" id="modal-create">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>New Dashboard</h2>
+        <button class="modal-close" onclick="closeCreateModal()">✕</button>
+      </div>
+      <form onsubmit="handleCreate(event)">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="new-dashboard-name" placeholder="e.g. Tech News" required />
+        </div>
+        <p class="form-error" id="create-error"></p>
+        <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1rem">
+          <button type="button" class="btn btn-ghost" onclick="closeCreateModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    import { requireAuth, logout, getMe, getDashboards, createDashboard, deleteDashboard, showToast, openModal, closeModal } from "/ui/api.js";
+
+    await requireAuth();
+
+    window.handleLogout = logout;
+    window.openCreateModal  = () => { document.getElementById("new-dashboard-name").value = ""; openModal("modal-create"); };
+    window.closeCreateModal = () => closeModal("modal-create");
+
+    async function load() {
+      const [me, dashboards] = await Promise.all([getMe(), getDashboards()]);
+      document.getElementById("user-email").textContent = me.email;
+      renderDashboards(dashboards);
+    }
+
+    function renderDashboards(list) {
+      const grid = document.getElementById("dashboards-grid");
+      if (!list.length) {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <p>No dashboards yet.</p>
+            <button class="btn btn-primary" onclick="openCreateModal()">Create your first dashboard</button>
+          </div>`;
+        return;
+      }
+      grid.innerHTML = list.map(d => `
+        <div class="card card-clickable" onclick="go('${d.id}', '${esc(d.name)}')">
+          <div class="card-title">${esc(d.name)}</div>
+          <div class="card-meta">Dashboard #${d.id}</div>
+          <div class="card-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-danger btn-sm" onclick="handleDelete('${d.id}')">Delete</button>
+          </div>
+        </div>`).join("");
+        
+    }
+
+    window.go = (id, name) => { window.location.href = `/ui/dashboard.html?id=${id}&name=${encodeURIComponent(name)}`; };
+
+    window.handleCreate = async function(e) {
+      e.preventDefault();
+      const err = document.getElementById("create-error");
+      err.classList.remove("visible");
+      try {
+        await createDashboard(document.getElementById("new-dashboard-name").value.trim());
+        closeModal("modal-create");
+        showToast("Dashboard created");
+        load();
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.add("visible");
+      }
+    };
+
+    window.handleDelete = async function(id) {
+      if (!confirm("Delete this dashboard and all its cards?")) return;
+      try {
+        await deleteDashboard(id);
+        showToast("Dashboard deleted");
+        load();
+      } catch (ex) {
+        showToast(ex.message, true);
+      }
+    };
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    }
+
+    load();
+  </script>
+</body>
+</html>

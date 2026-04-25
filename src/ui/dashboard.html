@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard · Tell Me All</title>
+  <link rel="stylesheet" href="/ui/style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div style="display:flex;align-items:center;gap:1rem">
+      <a href="/ui/dashboards.html" class="btn btn-ghost btn-sm">← Back</a>
+      <span class="brand" id="dashboard-name">Dashboard</span>
+    </div>
+    <div class="nav-actions">
+      <button class="btn btn-ghost btn-sm" onclick="openManageSourcesModal()">My Sources</button>
+      <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h1 id="dashboard-title">Loading…</h1>
+      <button class="btn btn-primary" onclick="openCardModal()">+ New card</button>
+    </div>
+
+    <div id="cards-grid" class="grid">
+      <div style="grid-column:1/-1;text-align:center;padding:3rem 0">
+        <span class="spinner"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- New card modal -->
+  <div class="modal-overlay" id="modal-card">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>New Card</h2>
+        <button class="modal-close" onclick="closeCardModal()">✕</button>
+      </div>
+      <form onsubmit="handleCreateCard(event)">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="card-title" placeholder="e.g. AI News" required />
+        </div>
+        <div class="form-group">
+          <label>Topic</label>
+          <input type="text" id="card-topic" placeholder="e.g. artificial intelligence" required />
+        </div>
+        <p class="form-error" id="card-error"></p>
+        <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1rem">
+          <button type="button" class="btn btn-ghost" onclick="closeCardModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Manage sources modal -->
+  <div class="modal-overlay" id="modal-sources">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Manage Sources</h2>
+        <button class="modal-close" onclick="closeSourcesModal()">✕</button>
+      </div>
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem">
+        Attach existing sources to this card, or create a new one.
+      </p>
+
+      <!-- Attach existing -->
+      <div class="form-group">
+        <label>Attach an existing source</label>
+        <div style="display:flex;gap:0.5rem">
+          <select id="source-select" style="flex:1"></select>
+          <button type="button" class="btn btn-primary btn-sm" onclick="handleAttach()">Attach</button>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0" />
+
+      <!-- Create new source -->
+      <p style="font-size:0.82rem;font-weight:600;margin-bottom:0.75rem">Or create a new source</p>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="new-source-name" placeholder="e.g. BBC RSS" />
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <input type="text" id="new-source-type" placeholder="e.g. rss" />
+      </div>
+      <p class="form-error" id="source-error"></p>
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:0.5rem">
+        <button type="button" class="btn btn-ghost" onclick="closeSourcesModal()">Done</button>
+        <button type="button" class="btn btn-primary" onclick="handleCreateSource()">Create &amp; attach</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Manage all sources modal -->
+  <div class="modal-overlay" id="modal-manage-sources">
+    <div class="modal" style="min-width:480px;max-height:80vh;display:flex;flex-direction:column">
+      <div class="modal-header">
+        <h2>My Sources</h2>
+        <button class="modal-close" onclick="closeManageSourcesModal()">✕</button>
+      </div>
+      <div id="manage-sources-list" style="overflow-y:auto;flex:1;padding-top:0.5rem"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      requireAuth, logout,
+      getCards, createCard, deleteCard,
+      getSources, createSource, updateSource, deleteSource, getSourcesForCard, attachSource,
+      getEventsForCard,
+      showToast, openModal, closeModal,
+    } from "/ui/api.js";
+
+    await requireAuth();
+    window.handleLogout = logout;
+
+    const params = new URLSearchParams(location.search);
+    const dashboardId = params.get("id");
+    if (!dashboardId) window.location.href = "/ui/dashboards.html";
+
+    let activeCardId = null;
+
+    // ── Modal helpers ─────────────────────────────────────────
+    window.openCardModal = () => {
+      document.getElementById("card-title").value = "";
+      document.getElementById("card-topic").value = "";
+      document.getElementById("card-error").classList.remove("visible");
+      openModal("modal-card");
+    };
+    window.closeCardModal = () => closeModal("modal-card");
+
+    window.openSourcesModal = async (cardId) => {
+      activeCardId = cardId;
+      document.getElementById("source-error").classList.remove("visible");
+      document.getElementById("new-source-name").value = "";
+      document.getElementById("new-source-type").value = "";
+
+      const [all, attached] = await Promise.all([getSources(), getSourcesForCard(cardId)]);
+      const attachedIds = new Set((attached || []).map(s => s.id));
+      const available = (all || []).filter(s => !attachedIds.has(s.id));
+
+      const sel = document.getElementById("source-select");
+      sel.innerHTML = available.length
+        ? available.map(s => `<option value="${s.id}">${esc(s.name)} (${esc(s.source_type)})</option>`).join("")
+        : `<option disabled>No more sources to attach</option>`;
+
+      openModal("modal-sources");
+    };
+    window.closeSourcesModal = () => { closeModal("modal-sources"); load(); };
+
+    // ── Create card ───────────────────────────────────────────
+    window.handleCreateCard = async function(e) {
+      e.preventDefault();
+      const err = document.getElementById("card-error");
+      err.classList.remove("visible");
+      try {
+        await createCard(
+          dashboardId,
+          document.getElementById("card-title").value.trim(),
+          document.getElementById("card-topic").value.trim(),
+        );
+        closeModal("modal-card");
+        showToast("Card created");
+        load();
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.add("visible");
+      }
+    };
+
+    // ── Delete card ───────────────────────────────────────────
+    window.handleDeleteCard = async function(cardId) {
+      if (!confirm("Delete this card?")) return;
+      try {
+        await deleteCard(cardId);
+        showToast("Card deleted");
+        load();
+      } catch (ex) {
+        showToast(ex.message, true);
+      }
+    };
+
+    // ── Attach source ─────────────────────────────────────────
+    window.handleAttach = async function() {
+      const sel = document.getElementById("source-select");
+      const sourceId = sel.value;
+      if (!sourceId) return;
+      try {
+        await attachSource(activeCardId, sourceId);
+        showToast("Source attached");
+        // refresh select
+        openSourcesModal(activeCardId);
+      } catch (ex) {
+        showToast(ex.message, true);
+      }
+    };
+
+    // ── Create + attach source ────────────────────────────────
+    window.handleCreateSource = async function() {
+      const err = document.getElementById("source-error");
+      err.classList.remove("visible");
+      const name = document.getElementById("new-source-name").value.trim();
+      const type = document.getElementById("new-source-type").value.trim();
+      if (!name || !type) {
+        err.textContent = "Name and type are required.";
+        err.classList.add("visible");
+        return;
+      }
+      try {
+        const src = await createSource(type, name);
+        await attachSource(activeCardId, src.id);
+        showToast("Source created and attached");
+        openSourcesModal(activeCardId);
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.add("visible");
+      }
+    };
+
+    // ── Load & render ─────────────────────────────────────────
+    async function load() {
+      const cards = await getCards(dashboardId);
+      const name = new URLSearchParams(location.search).get("name") || `Dashboard ${dashboardId}`;
+      document.getElementById("dashboard-name").textContent = name;
+      document.getElementById("dashboard-title").textContent = name;
+
+      const grid = document.getElementById("cards-grid");
+      if (!cards.length) {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <p>No cards yet. Create one to start tracking topics.</p>
+            <button class="btn btn-primary" onclick="openCardModal()">New card</button>
+          </div>`;
+        return;
+      }
+
+      // fetch events + sources for all cards in parallel
+      const enriched = await Promise.all(cards.map(async c => {
+        const [events, sources] = await Promise.all([
+          getEventsForCard(c.id).catch(() => []),
+          getSourcesForCard(c.id).catch(() => []),
+        ]);
+        return { ...c, events, sources };
+      }));
+
+      grid.innerHTML = enriched.map(c => `
+        <div class="card">
+          <div class="card-title">${esc(c.title)}</div>
+          <div class="card-meta">Topic: ${esc(c.topic)}</div>
+
+          <div class="source-tags">
+            ${(c.sources || []).map(s => `<span class="source-tag">${esc(s.name)}</span>`).join("") || '<span style="font-size:0.78rem;color:var(--text-muted)">No sources</span>'}
+          </div>
+
+          <ul class="event-list" style="margin-top:0.85rem">
+            ${(c.events || []).length
+              ? c.events.slice(0, 5).map(ev => `
+                  <li class="event-item">
+                    <div class="event-type">${esc(ev.event_type)}</div>
+                    ${esc(ev.summary_text)}
+                  </li>`).join("")
+              : '<li class="event-empty">No events yet</li>'}
+          </ul>
+
+          <div class="card-actions">
+            <button class="btn btn-ghost btn-sm" onclick="openSourcesModal('${c.id}')">Sources</button>
+            <button class="btn btn-danger btn-sm" onclick="handleDeleteCard('${c.id}')">Delete</button>
+          </div>
+        </div>`).join("");
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    }
+
+    // ── My Sources modal ──────────────────────────────────────
+    let _editingSourceId = null;
+
+    window.openManageSourcesModal = async () => {
+      _editingSourceId = null;
+      await _renderManageSources();
+      openModal("modal-manage-sources");
+    };
+    window.closeManageSourcesModal = () => closeModal("modal-manage-sources");
+
+    async function _renderManageSources() {
+      const sources = await getSources().catch(() => []);
+      const list = document.getElementById("manage-sources-list");
+      if (!sources || !sources.length) {
+        list.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:1.5rem">No sources yet.</p>';
+        return;
+      }
+      list.innerHTML = sources.map(s => _editingSourceId === s.id
+        ? `<div style="display:flex;gap:0.5rem;align-items:center;padding:0.75rem 0;border-bottom:1px solid var(--border)">
+            <input id="edit-name-${s.id}" value="${esc(s.name)}" style="flex:2;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)" />
+            <input id="edit-type-${s.id}" value="${esc(s.source_type)}" style="flex:1;padding:0.35rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)" />
+            <button class="btn btn-primary btn-sm" onclick="handleSaveSource('${s.id}')">Save</button>
+            <button class="btn btn-ghost btn-sm" onclick="cancelEditSource()">Cancel</button>
+          </div>`
+        : `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.75rem 0;border-bottom:1px solid var(--border)">
+            <span style="flex:2;font-weight:500">${esc(s.name)}</span>
+            <span class="source-tag">${esc(s.source_type)}</span>
+            <button class="btn btn-ghost btn-sm" onclick="startEditSource('${s.id}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="handleDeleteManagedSource('${s.id}')">Delete</button>
+          </div>`
+      ).join("");
+    }
+
+    window.startEditSource = (id) => { _editingSourceId = id; _renderManageSources(); };
+    window.cancelEditSource = () => { _editingSourceId = null; _renderManageSources(); };
+
+    window.handleSaveSource = async (id) => {
+      const name = document.getElementById(`edit-name-${id}`).value.trim();
+      const type = document.getElementById(`edit-type-${id}`).value.trim();
+      if (!name || !type) return;
+      try {
+        await updateSource(id, { name, source_type: type });
+        showToast("Source updated");
+        _editingSourceId = null;
+        _renderManageSources();
+        load();
+      } catch (ex) { showToast(ex.message, true); }
+    };
+
+    window.handleDeleteManagedSource = async (id) => {
+      if (!confirm("Delete this source? It will be detached from all cards.")) return;
+      try {
+        await deleteSource(id);
+        showToast("Source deleted");
+        _renderManageSources();
+        load();
+      } catch (ex) { showToast(ex.message, true); }
+    };
+
+    // pass dashboard name via query param when navigating from dashboards page
+    const nameParam = params.get("name");
+    if (nameParam) {
+      document.getElementById("dashboard-name").textContent = nameParam;
+      document.getElementById("dashboard-title").textContent = nameParam;
+    }
+
+    load();
+    setInterval(load, 30_000); // refresh every 30 s
+  </script>
+</body>
+</html>

@@ -1,7 +1,9 @@
+import uuid
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from storage import db_operations
-from storage.models import SourceCreate, SourceRead
+from storage.models import SourceCreate, SourceRead, SourceUpdate
 
 
 async def create_source(
@@ -58,3 +60,21 @@ async def attach_source_to_card(
 	source_id: int,
 ) -> None:
 	await db_operations.attach_source_to_card(session, card_id, source_id)
+
+
+async def update_source(
+	session: AsyncSession,
+	source_id: uuid.UUID,
+	payload: SourceUpdate,
+) -> SourceRead | None:
+	row = await db_operations.update_source(session, source_id, payload)
+	if row is None:
+		return None
+	return SourceRead.model_validate(row)
+
+
+async def delete_source(
+	session: AsyncSession,
+	source_id: uuid.UUID,
+) -> bool:
+	return await db_operations.delete_source(session, source_id)
