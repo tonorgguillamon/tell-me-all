@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from storage.models import Card, CardCreate, CardSource, Dashboard, DashboardCreate, Source, SourceCreate, SourceUpdate, SourceEvent, SourceEventCreate, User, UserCreate
+from storage.models import Card, CardCreate, CardSource, CardUpdate, Dashboard, DashboardCreate, Source, SourceCreate, SourceUpdate, SourceEvent, SourceEventCreate, User, UserCreate
 
 
 async def create_user(
@@ -39,6 +39,8 @@ async def create_card(
         dashboard_id=payload.dashboard_id,
         title=payload.title,
         topic=payload.topic,
+        role=payload.role,
+        creativity=payload.creativity,
     )
     session.add(row)
     await session.flush()
@@ -414,6 +416,27 @@ async def get_sources_for_card(
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def update_card(
+    session: AsyncSession,
+    card_id: uuid.UUID,
+    payload: CardUpdate,
+) -> Card | None:
+    row = await session.get(Card, card_id)
+    if row is None:
+        return None
+    if payload.title is not None:
+        row.title = payload.title
+    if payload.topic is not None:
+        row.topic = payload.topic
+    if payload.role is not None:
+        row.role = payload.role
+    if payload.creativity is not None:
+        row.creativity = payload.creativity
+    await session.flush()
+    await session.refresh(row)
+    return row
 
 
 async def update_source(

@@ -75,10 +75,17 @@ export async function getCards(dashboardId) {
   return request(`/api/v1/dashboards/${dashboardId}/cards`);
 }
 
-export async function createCard(dashboardId, title, topic) {
+export async function createCard(dashboardId, title, topic, role, creativity) {
   return request(`/api/v1/dashboards/${dashboardId}/cards`, {
     method: "POST",
-    body: JSON.stringify({ dashboard_id: dashboardId, title, topic }),
+    body: JSON.stringify({ dashboard_id: dashboardId, title, topic, role, creativity }),
+  });
+}
+
+export async function updateCard(cardId, data) {
+  return request(`/api/v1/cards/${cardId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
   });
 }
 

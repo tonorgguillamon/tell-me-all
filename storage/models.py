@@ -6,7 +6,7 @@ from typing import Any
 import uuid
 
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import DateTime, ForeignKey, JSON, String
+from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -51,6 +51,19 @@ class CardCreate(BaseModel):
     dashboard_id: uuid.UUID
     title: str = Field(min_length=1, max_length=120)
     topic: str = Field(min_length=1, max_length=120)
+    role: str = Field(
+        default="You are a careful research analyst focused on verified facts, clear summaries, and useful insights.",
+        min_length=1,
+        max_length=4000,
+    )
+    creativity: int = Field(default=20, ge=0, le=100)
+
+
+class CardUpdate(BaseModel):
+    title: str | None = Field(None, min_length=1, max_length=120)
+    topic: str | None = Field(None, min_length=1, max_length=120)
+    role: str | None = Field(None, min_length=1, max_length=4000)
+    creativity: int | None = Field(None, ge=0, le=100)
 
 
 class CardRead(BaseModel):
@@ -58,6 +71,8 @@ class CardRead(BaseModel):
     dashboard_id: uuid.UUID
     title: str
     topic: str
+    role: str
+    creativity: int
     model_config = {"from_attributes": True}
 
 
@@ -106,6 +121,11 @@ class Card(Base):
     dashboard_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("dashboards.id"), index=True)
     title: Mapped[str] = mapped_column(String(120))
     topic: Mapped[str] = mapped_column(String(120), index=True)
+    role: Mapped[str] = mapped_column(
+        Text,
+        default="You are a careful research analyst focused on verified facts, clear summaries, and useful insights.",
+    )
+    creativity: Mapped[int] = mapped_column(Integer, default=20)
     dashboard: Mapped["Dashboard"] = relationship(back_populates="cards")
     card_sources: Mapped[list["CardSource"]] = relationship(back_populates="card", cascade="all, delete-orphan")
 

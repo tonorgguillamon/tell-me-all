@@ -4,6 +4,7 @@ import os
 from typing import AsyncIterator
 from urllib.parse import quote_plus
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -72,5 +73,5 @@ async def get_session() -> AsyncIterator[AsyncSession]:
 
 async def init_db() -> None:
     async with engine.begin() as conn:
-        #await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)

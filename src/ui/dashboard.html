@@ -35,10 +35,10 @@
   <div class="modal-overlay" id="modal-card">
     <div class="modal">
       <div class="modal-header">
-        <h2>New Card</h2>
+        <h2 id="card-modal-title">New Card</h2>
         <button class="modal-close" onclick="closeCardModal()">✕</button>
       </div>
-      <form onsubmit="handleCreateCard(event)">
+      <form onsubmit="handleSaveCard(event)">
         <div class="form-group">
           <label>Title</label>
           <input type="text" id="card-title" placeholder="e.g. AI News" required />
@@ -47,10 +47,23 @@
           <label>Topic</label>
           <input type="text" id="card-topic" placeholder="e.g. artificial intelligence" required />
         </div>
+        <div class="form-group">
+          <label>Role / prompt</label>
+          <textarea id="card-role" rows="5" placeholder="Describe how the background agent should research, filter, and summarize this topic." required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="card-creativity">Creativity</label>
+          <input type="range" id="card-creativity" min="0" max="100" value="20" oninput="updateCreativityPreview()" />
+          <div class="range-row">
+            <span>Factual</span>
+            <strong id="card-creativity-value">20 · Mostly factual</strong>
+            <span>Happy flower</span>
+          </div>
+        </div>
         <p class="form-error" id="card-error"></p>
         <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1rem">
           <button type="button" class="btn btn-ghost" onclick="closeCardModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary">Create</button>
+          <button type="submit" class="btn btn-primary" id="card-submit-btn">Create</button>
         </div>
       </form>
     </div>
@@ -112,7 +125,7 @@
   <script type="module">
     import {
       requireAuth, logout,
-      getCards, createCard, deleteCard,
+      getCards, createCard, updateCard, deleteCard,
       getSources, createSource, updateSource, deleteSource, getSourcesForCard, attachSource,
       getEventsForCard,
       showToast, openModal, closeModal,
@@ -126,15 +139,35 @@
     if (!dashboardId) window.location.href = "/ui/dashboards.html";
 
     let activeCardId = null;
+    let currentCards = [];
+    let cardModalMode = "create";
 
     // ── Modal helpers ─────────────────────────────────────────
-    window.openCardModal = () => {
-      document.getElementById("card-title").value = "";
-      document.getElementById("card-topic").value = "";
+    window.openCardModal = (card = null) => {
+      cardModalMode = card ? "edit" : "create";
+      activeCardId = card?.id ?? null;
+      document.getElementById("card-modal-title").textContent = card ? "Edit Card" : "New Card";
+      document.getElementById("card-submit-btn").textContent = card ? "Save" : "Create";
+      document.getElementById("card-title").value = card?.title ?? "";
+      document.getElementById("card-topic").value = card?.topic ?? "";
+      document.getElementById("card-role").value = card?.role ?? "You are a careful research analyst focused on verified facts, clear summaries, and useful insights.";
+      document.getElementById("card-creativity").value = String(card?.creativity ?? 20);
       document.getElementById("card-error").classList.remove("visible");
+      updateCreativityPreview();
       openModal("modal-card");
     };
-    window.closeCardModal = () => closeModal("modal-card");
+    window.closeCardModal = () => {
+      activeCardId = null;
+      closeModal("modal-card");
+    };
+    window.editCard = (cardId) => {
+      const card = currentCards.find((entry) => entry.id === cardId);
+      if (card) window.openCardModal(card);
+    };
+    window.updateCreativityPreview = () => {
+      const value = Number(document.getElementById("card-creativity").value || 0);
+      document.getElementById("card-creativity-value").textContent = `${value} · ${describeCreativity(value)}`;
+    };
 
     window.openSourcesModal = async (cardId) => {
       activeCardId = cardId;
@@ -155,19 +188,26 @@
     };
     window.closeSourcesModal = () => { closeModal("modal-sources"); load(); };
 
-    // ── Create card ───────────────────────────────────────────
-    window.handleCreateCard = async function(e) {
+    // ── Save card ─────────────────────────────────────────────
+    window.handleSaveCard = async function(e) {
       e.preventDefault();
       const err = document.getElementById("card-error");
       err.classList.remove("visible");
+      const payload = {
+        title: document.getElementById("card-title").value.trim(),
+        topic: document.getElementById("card-topic").value.trim(),
+        role: document.getElementById("card-role").value.trim(),
+        creativity: Number(document.getElementById("card-creativity").value),
+      };
       try {
-        await createCard(
-          dashboardId,
-          document.getElementById("card-title").value.trim(),
-          document.getElementById("card-topic").value.trim(),
-        );
+        if (cardModalMode === "edit" && activeCardId) {
+          await updateCard(activeCardId, payload);
+          showToast("Card updated");
+        } else {
+          await createCard(dashboardId, payload.title, payload.topic, payload.role, payload.creativity);
+          showToast("Card created");
+        }
         closeModal("modal-card");
-        showToast("Card created");
         load();
       } catch (ex) {
         err.textContent = ex.message;
@@ -227,6 +267,7 @@
     // ── Load & render ─────────────────────────────────────────
     async function load() {
       const cards = await getCards(dashboardId);
+      currentCards = cards;
       const name = new URLSearchParams(location.search).get("name") || `Dashboard ${dashboardId}`;
       document.getElementById("dashboard-name").textContent = name;
       document.getElementById("dashboard-title").textContent = name;
@@ -249,11 +290,16 @@
         ]);
         return { ...c, events, sources };
       }));
+      currentCards = enriched;
 
       grid.innerHTML = enriched.map(c => `
         <div class="card">
           <div class="card-title">${esc(c.title)}</div>
           <div class="card-meta">Topic: ${esc(c.topic)}</div>
+          <div class="card-config">
+            <div class="card-config-item"><strong>Prompt</strong><span>${esc(trimRole(c.role))}</span></div>
+            <div class="card-config-item"><strong>Creativity</strong><span>${describeCreativity(c.creativity)} (${c.creativity})</span></div>
+          </div>
 
           <div class="source-tags">
             ${(c.sources || []).map(s => `<span class="source-tag">${esc(s.name)}</span>`).join("") || '<span style="font-size:0.78rem;color:var(--text-muted)">No sources</span>'}
@@ -270,10 +316,24 @@
           </ul>
 
           <div class="card-actions">
+            <button class="btn btn-ghost btn-sm" onclick="editCard('${c.id}')">Edit</button>
             <button class="btn btn-ghost btn-sm" onclick="openSourcesModal('${c.id}')">Sources</button>
             <button class="btn btn-danger btn-sm" onclick="handleDeleteCard('${c.id}')">Delete</button>
           </div>
         </div>`).join("");
+    }
+
+    function trimRole(role) {
+      const normalized = String(role || "").replace(/\s+/g, " ").trim();
+      return normalized.length > 140 ? `${normalized.slice(0, 137)}...` : normalized;
+    }
+
+    function describeCreativity(value) {
+      if (value <= 20) return "Mostly factual";
+      if (value <= 45) return "Grounded";
+      if (value <= 70) return "Balanced";
+      if (value <= 85) return "Exploratory";
+      return "Very imaginative";
     }
 
     function esc(s) {

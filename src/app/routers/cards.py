@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.app.dependencies import Pagination, get_current_user, get_pagination
 from src.services import card_service, dashboard_service
 from storage.db_engine import get_session
-from storage.models import CardCreate, CardRead, UserRead
+from storage.models import CardCreate, CardRead, CardUpdate, UserRead
 
 router = APIRouter(tags=["cards"])
 
@@ -26,6 +26,8 @@ async def create_card_for_dashboard(
         dashboard_id=dashboard_id,
         title=payload.title,
         topic=payload.topic,
+        role=payload.role,
+        creativity=payload.creativity,
     )
     return await card_service.create_card(session, card_payload)
 
@@ -56,6 +58,19 @@ async def get_card(
     session: AsyncSession = Depends(get_session),
 ) -> CardRead:
     card = await card_service.get_card_by_id(session, card_id)
+    if card is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+    return card
+
+
+@router.patch("/cards/{card_id}", response_model=CardRead)
+async def update_card(
+    card_id: uuid.UUID,
+    payload: CardUpdate,
+    current_user: UserRead = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> CardRead:
+    card = await card_service.update_card(session, card_id, payload)
     if card is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
     return card
